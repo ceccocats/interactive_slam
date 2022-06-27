@@ -51,6 +51,7 @@ public:
   void add_edge_perpendicular(g2o::VertexPlane* v1, g2o::VertexPlane* v2, double information_scale, const std::string& robust_kernel = "NONE", double robust_kernel_delta = 0.1);
   bool add_edge_prior_normal(long plane_vertex_id, const Eigen::Vector3d& normal, double information_scale, const std::string& robust_kernel = "NONE", double robust_kernel_delta = 0.1);
   bool add_edge_prior_distance(long plane_vertex_id, double distance, double information_scale, const std::string& robust_kernel = "NONE", double robust_kernel_delta = 0.1);
+  void add_edge_prior_xyz(const KeyFrame::Ptr& v_se3, const Eigen::Vector3d& xyz, double gps_edge_stddev_xy, double gps_edge_stddev_z, const std::string& robust_kernel = "NONE", double robust_kernel_delta = 0.1);
 
   void optimize(int num_iterations = -1);
   void optimize_background(int num_iterations = -1);

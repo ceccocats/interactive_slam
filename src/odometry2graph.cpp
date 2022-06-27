@@ -47,7 +47,7 @@ public:
   }
 
 public:
-  static OdometryFrame::Ptr load(const std::string& cloud_filename, const std::string& pose_filename) {
+  static OdometryFrame::Ptr load(const std::string& cloud_filename, const std::string& pose_filename, const std::string& gps_filename) {
     std::ifstream ifs(pose_filename);
     if(!ifs) {
       std::cerr << "error : failed to load " << pose_filename << std::endl;
@@ -63,7 +63,20 @@ public:
 
     Eigen::Isometry3d pose(mat);
 
-    return std::make_shared<OdometryFrame>(cloud_filename, pose);
+    auto k = std::make_shared<OdometryFrame>(cloud_filename, pose);
+
+    // load gps pose
+    if(!gps_filename.empty()) {
+      std::cout<<"opening: "<<gps_filename<<"\n";
+      std::ifstream gpsFile(gps_filename);
+      Eigen::Vector3d pos;
+      if(gpsFile >> pos.x() >> pos.y() >> pos.z()) {
+        k->utm_coord = pos;
+        std::cout<<"GPS coord: "<<k->utm_coord.value() <<"\n";
+      }
+    }
+
+    return k;
   }
 
   static OdometryFrame::Ptr load(const std::string& cloud_filename, const Eigen::Isometry3d& pose, unsigned long stamp_sec, unsigned long stamp_usec) {
@@ -75,17 +88,18 @@ public:
   }
 
   const pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud(float downsample_resolution) {
-    if(cloud_ == nullptr || std::abs(this->downsample_resolution - downsample_resolution) > 0.01f) {
+    if(cloud_ == nullptr) { // || std::abs(this->downsample_resolution - downsample_resolution) > 0.01f) {
       pcl::PointCloud<pcl::PointXYZI>::Ptr raw_cloud = load_cloud(raw_cloud_path);
       pcl::PointCloud<pcl::PointXYZI>::Ptr downsampled(new pcl::PointCloud<pcl::PointXYZI>());
 
-      pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
-      voxel_grid.setLeafSize(downsample_resolution, downsample_resolution, downsample_resolution);
-      voxel_grid.setInputCloud(raw_cloud);
-      voxel_grid.filter(*downsampled);
+      // pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
+      // voxel_grid.setLeafSize(downsample_resolution, downsample_resolution, downsample_resolution);
+      // voxel_grid.setInputCloud(raw_cloud);
+      // voxel_grid.filter(*downsampled);
 
-      this->downsample_resolution = downsample_resolution;
-      cloud_ = downsampled;
+      // this->downsample_resolution = downsample_resolution;
+      // cloud_ = downsampled;
+      cloud_ = raw_cloud;
       cloud_buffer.reset(new glk::PointCloudBuffer(cloud_));
     }
 
@@ -154,6 +168,8 @@ public:
   unsigned long stamp_usec;
   Eigen::Isometry3d pose;
   std::string raw_cloud_path;
+
+  std::optional<Eigen::Vector3d> utm_coord;
 
 private:
   float downsample_resolution;
@@ -259,7 +275,7 @@ private:
     for(const auto& filename : filenames) {
       progress.increment();
 
-      auto frame = OdometryFrame::load(directory + "/" + filename + ".pcd", directory + "/" + filename + ".odom");
+      auto frame = OdometryFrame::load(directory + "/" + filename + ".pcd", directory + "/" + filename + ".odom", directory + "/" + filename + ".gps");
       if(frame == nullptr) {
         continue;
       }
@@ -379,6 +395,10 @@ private:
       ofs << "estimate" << std::endl << keyframes[i]->pose.matrix() << std::endl;
       ofs << "odom " << std::endl << keyframes[i]->pose.matrix() << std::endl;
       ofs << "id " << i << std::endl;
+      if(keyframes[i]->utm_coord) {
+        std::cout<<i<<"  GPS: "<<keyframes[i]->utm_coord.value()<<"\n";
+        ofs << "utm_coord " << std::endl << keyframes[i]->utm_coord.value().matrix() << std::endl;
+      }
     }
 
     return true;
@@ -424,9 +444,9 @@ public:
     version_modal.reset(new VersionModal());
 
     delta_updated = false;
-    keyframe_delta_x = 3.0f;
-    keyframe_delta_angle = 1.0f;
-    downsample_resolution = 0.2f;
+    keyframe_delta_x = 0.0f;
+    keyframe_delta_angle = 0.0f;
+    downsample_resolution = 0.0f;
 
     return true;
   }

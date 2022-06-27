@@ -18,6 +18,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/common/transforms.h>
 
+#include <g2o/edge_se3_priorxyz.hpp>
 #include <hdl_graph_slam/graph_slam.hpp>
 #include <hdl_graph_slam/information_matrix_calculator.hpp>
 
@@ -371,6 +372,17 @@ bool InteractiveGraph::add_edge_prior_distance(long plane_vertex_id, double dist
 
   return true;
 }
+
+void InteractiveGraph::add_edge_prior_xyz(const KeyFrame::Ptr& v_se3, const Eigen::Vector3d& xyz, double gps_edge_stddev_xy, double gps_edge_stddev_z, const std::string& robust_kernel, double robust_kernel_delta) {
+  Eigen::Matrix3d information_matrix = Eigen::Matrix3d::Identity();
+    information_matrix.block<2, 2>(0, 0) /= gps_edge_stddev_xy;
+    information_matrix(2, 2) /= gps_edge_stddev_z;
+  auto edge = add_se3_prior_xyz_edge(v_se3->node, xyz, information_matrix);
+  if(robust_kernel != "NONE") {
+    add_robust_kernel(edge, robust_kernel, robust_kernel_delta);
+  }
+}
+
 
 void InteractiveGraph::optimize(int num_iterations) {
   if(anchor_node) {

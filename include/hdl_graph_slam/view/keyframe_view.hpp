@@ -51,6 +51,20 @@ public:
     const auto& sphere = glk::Primitives::instance()->primitive(glk::Primitives::SPHERE);
     sphere.draw(shader);
     shader.set_uniform("apply_keyframe_scale", false);
+
+    // draw gps
+    if(kf->utm_coord) {
+      Eigen::Matrix4f gps_model_matrix = Eigen::Matrix4f::Identity();
+      gps_model_matrix.block<3, 3>(0, 0) *= 0.5;
+      gps_model_matrix.block<3,1>(0,3) = kf->utm_coord.value().matrix().cast<float>();
+      gps_model_matrix.matrix()(2,3) = 0; // zero on Z 
+      shader.set_uniform("apply_keyframe_scale", true);
+      shader.set_uniform("material_color", Eigen::Vector4f(1.0f, 0.0f, 1.0f, 1.0f));
+      shader.set_uniform("model_matrix", gps_model_matrix);
+      const auto& cone = glk::Primitives::instance()->primitive(glk::Primitives::CONE);
+      cone.draw(shader);
+      shader.set_uniform("apply_keyframe_scale", false);
+    }
   }
 
   virtual void draw(const DrawFlags& flags, glk::GLSLShader& shader, const Eigen::Vector4f& color, const Eigen::Matrix4f& model_matrix) override {
@@ -74,6 +88,16 @@ public:
     const auto& sphere = glk::Primitives::instance()->primitive(glk::Primitives::SPHERE);
     sphere.draw(shader);
     shader.set_uniform("apply_keyframe_scale", false);
+
+    // draw gps
+    if(kf->utm_coord) {
+      Eigen::Matrix4f gps_model_matrix = Eigen::Matrix4f::Identity();
+      gps_model_matrix.block<3,1>(0,3) = kf->utm_coord.value().matrix().cast<float>();
+      shader.set_uniform("model_matrix", gps_model_matrix);
+      shader.set_uniform("material_color", Eigen::Vector4f(1.0f, 0.0f, 1.0f, 1.0f));
+      const auto& cone = glk::Primitives::instance()->primitive(glk::Primitives::CONE);
+      cone.draw(shader);
+    }
   }
 
 private:
